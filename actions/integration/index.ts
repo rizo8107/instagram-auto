@@ -8,13 +8,20 @@ import { createIntegration, getIntegrations } from "./queries";
 
 export const onOathInstagram = async (strategy: "INSTAGRAM" | "CRM") => {
   if (strategy === "INSTAGRAM") {
-    // Construct the proper Instagram OAuth URL with all required parameters
+    // If a full auth URL is provided via env, use it directly
+    const full = process.env.INSTAGRAM_AUTH_FULL_URL;
+    if (full && full.length > 0) {
+      console.log("Redirecting to Instagram FULL auth URL from env");
+      return redirect(full);
+    }
+
+    // Fallback: construct the Instagram OAuth URL with basic scopes
     const clientId = process.env.INSTAGRAM_CLIENT_ID;
     const redirectUri = `${process.env.NEXT_PUBLIC_HOST_URL}/callback/instagram`;
     const scope = 'user_profile,user_media';
-    
-    const instagramAuthUrl = `${process.env.INSTAGRAM_EMBEDDED_OAUTH_URL}?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&response_type=code`;
-    
+
+    const instagramAuthUrl = `${process.env.INSTAGRAM_EMBEDDED_OAUTH_URL}?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&response_type=code`;
+
     console.log("Redirecting to Instagram auth URL:", instagramAuthUrl);
     return redirect(instagramAuthUrl);
   }
