@@ -8,14 +8,22 @@ import { createIntegration, getIntegrations } from "./queries";
 
 export const onOathInstagram = async (strategy: "INSTAGRAM" | "CRM") => {
   if (strategy === "INSTAGRAM") {
-    return redirect(process.env.INSTAGRAM_EMBEDDED_OAUTH_URL as string);
+    // Construct the proper Instagram OAuth URL with all required parameters
+    const clientId = process.env.INSTAGRAM_CLIENT_ID;
+    const redirectUri = `${process.env.NEXT_PUBLIC_HOST_URL}/callback/instagram`;
+    const scope = 'user_profile,user_media';
+    
+    const instagramAuthUrl = `${process.env.INSTAGRAM_EMBEDDED_OAUTH_URL}?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&response_type=code`;
+    
+    console.log("Redirecting to Instagram auth URL:", instagramAuthUrl);
+    return redirect(instagramAuthUrl);
   }
 };
 
 export const onIntegrate = async (code: string) => {
-  const user = await onCurrentUser();
-
   try {
+    const user = await onCurrentUser();
+
     const integration = await getIntegrations(user.id);
 
     if (integration && integration.integrations.length === 0) {
@@ -37,11 +45,15 @@ export const onIntegrate = async (code: string) => {
         );
         return { status: 200, data: create };
       }
-      return { status: 401 };
+      return { status: 401, error: "Failed to generate token" };
     }
 
-    return { status: 404 };
-  } catch (error) {
-    return { status: 500 };
+    return { status: 404, error: "Integration already exists" };
+  } catch (error: any) {
+    console.error("Integration error:", error);
+    return { 
+      status: 500, 
+      error: error.message || "Unknown integration error" 
+    };
   }
 };
