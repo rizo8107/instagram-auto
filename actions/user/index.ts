@@ -1,7 +1,7 @@
 "use server";
 
 import { refreshToken } from "@/lib/fetch";
-import { stripe } from "@/lib/stripe";
+import { stripe, isStripeConfigured } from "@/lib/stripe";
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { updateIntegration } from "../integration/queries";
@@ -120,26 +120,27 @@ export const onboardUser = async () => {
 };
 
 export const onUserInfo = async () => {
-  const user = await onCurrentUser();
-
   try {
+    const user = await onCurrentUser();
+    
     const profile = await findUser(user.id);
     if (profile) return { status: 200, data: profile };
 
-    return { status: 404 };
+    return { status: 404, message: "User not found in database" };
   } catch (error: any) {
-    return { status: 500 };
+    console.error("Error in onUserInfo:", error);
+    return { status: 500, message: error.message };
   }
 };
 
 export const onSubscribe = async (session_id: string) => {
-  const user = await onCurrentUser();
-
   try {
+    const user = await onCurrentUser();
+
     // Check if stripe is initialized
-    if (!stripe) {
+    if (!isStripeConfigured()) {
       console.error('Stripe not initialized');
-      return { status: 500, error: 'Stripe not initialized' };
+      return { status: 500, error: 'Payment system not initialized' };
     }
     
     // Retrieve session information
