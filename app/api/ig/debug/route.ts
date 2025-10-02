@@ -1,14 +1,17 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import axios from "axios";
 
-export async function GET() {
-  const token = process.env.INSTAGRAM_DEBUG_ACCESS_TOKEN;
+export async function GET(req: NextRequest) {
+  const url = new URL(req.url);
+  const tokenFromQuery = url.searchParams.get("token") || undefined;
+  const tokenFromEnv = process.env.INSTAGRAM_DEBUG_ACCESS_TOKEN || undefined;
+  const token = tokenFromQuery || tokenFromEnv;
   const base = process.env.INSTAGRAM_BASE_URL || "https://graph.facebook.com";
 
   if (!token) {
     return NextResponse.json({
       status: 400,
-      error: "Missing INSTAGRAM_DEBUG_ACCESS_TOKEN env",
+      error: "No token provided. Pass ?token=YOUR_TOKEN or set INSTAGRAM_DEBUG_ACCESS_TOKEN env",
     });
   }
 
@@ -27,6 +30,7 @@ export async function GET() {
     return NextResponse.json({
       status: 200,
       base,
+      tokenSource: tokenFromQuery ? "query" : "env",
       hasPages: pages.length > 0,
       pages,
       igBusinessId: igBusinessId || null,
