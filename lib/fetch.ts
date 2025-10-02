@@ -80,12 +80,31 @@ export const generateToken = async (code: string) => {
   });
 
   const token = await shortTokenRes.json();
-  if (token.permissions.length > 0) {
-    console.log("🚀 ~ generateToken ~ token:", token);
-    const long_token = await axios.get(
-      `${process.env.INSTAGRAM_BASE_URL}/access_token?grant_type=ig_exchange_token&client_secret=${process.env.INSTAGRAM_CLIENT_SECRET}&access_token=${token.access_token}`
+  // Expect token to contain access_token when successful
+  if (!token || !token.access_token) {
+    console.error("generateToken: No access_token in response", token);
+    return null;
+  }
+
+  console.log("generateToken: short-lived token acquired");
+
+  try {
+    // Try to exchange for a long-lived token using Graph API parameter fb_exchange_token
+    const longTokenRes = await axios.get(
+      `${process.env.INSTAGRAM_BASE_URL}/oauth/access_token`,
+      {
+        params: {
+          grant_type: "fb_exchange_token",
+          client_id: process.env.INSTAGRAM_CLIENT_ID,
+          client_secret: process.env.INSTAGRAM_CLIENT_SECRET,
+          fb_exchange_token: token.access_token,
+        },
+      }
     );
 
-    return long_token.data;
+    return longTokenRes.data || token;
+  } catch (exchangeErr) {
+    console.warn("generateToken: long-lived exchange failed, falling back to short token", exchangeErr);
+    return token;
   }
 };
